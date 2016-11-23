@@ -6,6 +6,7 @@ ENV DOCKER_DD_AGENT=yes \
     AGENT_VERSION=1:5.10.1-1
 
 COPY entrypoint.sh supervisor.conf /
+COPY unicreds /buildeng/unicreds
 
 # Install the Agent
 RUN echo "deb http://apt.datadoghq.com/ stable main" > /etc/apt/sources.list.d/datadog.list \
