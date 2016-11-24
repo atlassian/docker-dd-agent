@@ -1,5 +1,4 @@
 #!/bin/bash
-#set -e
 
 AWS_REGION="${AWS_REGION:=us-east-1}"
 DD_API_KEY=$(/buildeng/unicreds -r $AWS_REGION get datadog_api_key | head -c -1)
