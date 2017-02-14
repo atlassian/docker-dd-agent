@@ -1,5 +1,13 @@
 #!/bin/bash
-#set -e
+
+set -e
+AWS_REGION="${AWS_REGION:=us-east-1}"
+DD_API_KEY=$(/buildeng/unicreds -r $AWS_REGION get datadog_api_key | head -c -1)
+BAMBOO_PASSWORD=$(/buildeng/unicreds -r $AWS_REGION get build_doctor_passwd | head -c -1)
+
+echo "bamboo_password: $BAMBOO_PASSWORD" >> custom_config/environment.yaml
+python generate_conf.py
+mv custom_generated/lambda/http_check.yaml /etc/dd-agent/conf.d/http_check.yaml
 
 if [[ $DD_API_KEY ]]; then
   export API_KEY=${DD_API_KEY}

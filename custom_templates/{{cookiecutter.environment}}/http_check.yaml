@@ -1,0 +1,35 @@
+init_config:
+
+instances:
+{%- for server in cookiecutter.bamboo_servers | sort %}
+  - name: {{ server }}-network-check
+    username: buildeng-doctor-bot
+    password: {{ cookiecutter.bamboo_password }}
+    collect_response_time: true
+    disable_ssl_validation: false
+    timeout: 120
+    threshold: 3
+    window: 5
+    headers:
+      {'Content-Type' : 'application/xml'}
+    url: https://{{ server }}.internal.atlassian.com/rest/api/latest/info
+    days_warning: 31
+    check_certificate_expiration: true
+    skip_event: true
+    tags:
+      - type:Bamboo
+
+  - name: {{ server }}-UI-check
+    collect_response_time: true
+    disable_ssl_validation: false
+    timeout: 120
+    threshold: 3
+    window: 5
+    headers:
+      {'Content-Type' : 'application/xml'}
+    url: https://{{ server }}.internal.atlassian.com
+    content_match: '<title>Log in as a Bamboo user -'
+    skip_event: true
+    tags:
+      - type:Bamboo-UI
+{%- endfor %}

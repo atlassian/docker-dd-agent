@@ -1,0 +1,25 @@
+---
+environment: lambda
+
+bamboo_servers:
+  - bitbucket-bamboo
+  - confluence-cloud-bamboo
+  - deployment-bamboo
+  - ecosystem-bamboo
+  - engservices-bamboo
+  - hipchat-bamboo
+  - identity-bamboo
+  - it-bamboo
+  - jira-cloud-bamboo
+  - jira-software-bamboo
+  - mobile-bamboo
+  - sandbox-bamboo
+  - server-gdn-bamboo
+  - server-syd-bamboo
+  - server-us-bamboo
+  - servicedesk-bamboo
+  - servicedesk-cloud-bamboo
+  - sox-bamboo
+  - staging-bamboo
+  - tardigrade-bamboo
+

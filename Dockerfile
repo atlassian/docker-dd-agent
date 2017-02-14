@@ -9,7 +9,7 @@ ENV DOCKER_DD_AGENT=yes \
 RUN echo "deb http://apt.datadoghq.com/ stable main" > /etc/apt/sources.list.d/datadog.list \
  && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C7A7DA52 \
  && apt-get update \
- && apt-get install --no-install-recommends -y datadog-agent="${AGENT_VERSION}" \
+ && apt-get install --no-install-recommends -y datadog-agent="${AGENT_VERSION}" ca-certificates python-pip python-dev \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -31,7 +31,18 @@ RUN mv /etc/dd-agent/datadog.conf.example /etc/dd-agent/datadog.conf \
 # Add Docker check
 COPY conf.d/docker_daemon.yaml /etc/dd-agent/conf.d/docker_daemon.yaml
 
+# Add unicreds
+COPY unicreds /buildeng/unicreds
+
 COPY entrypoint.sh /entrypoint.sh
+
+# Custom configuration
+COPY custom_config /custom_config
+COPY custom_templates /custom_templates
+RUN mkdir /custom_generated
+COPY generate_conf.py /
+COPY requirements.txt /
+RUN pip install -r requirements.txt
 
 # Extra conf.d and checks.d
 VOLUME ["/conf.d", "/checks.d"]
