@@ -32,4 +32,5 @@ instances:
     skip_event: true
     tags:
       - type:Bamboo-UI
+    http_response_status_code: \d\d\d
 {%- endfor %}
