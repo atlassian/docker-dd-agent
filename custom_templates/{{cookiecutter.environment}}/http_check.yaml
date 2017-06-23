@@ -27,8 +27,8 @@ instances:
     window: 5
     headers:
       {'Content-Type' : 'application/xml'}
-    url: https://{{ server }}.internal.atlassian.com
-    content_match: '<title>Log in as a Bamboo user -'
+    url: https://{{ server }}.internal.atlassian.com/error/errorEvents.action
+    content_match: 'There are no errors accessing Bamboo at present.'
     skip_event: true
     tags:
       - type:Bamboo-UI
