@@ -3,7 +3,7 @@ FROM debian:jessie
 MAINTAINER Datadog <package@datadoghq.com>
 
 ENV DOCKER_DD_AGENT=yes \
-    AGENT_VERSION=1:5.10.1-1
+    AGENT_VERSION=1:5.14.1-1
 
 COPY entrypoint.sh supervisor.conf /
 COPY unicreds /buildeng/unicreds
@@ -25,8 +25,8 @@ RUN mv /etc/dd-agent/datadog.conf.example /etc/dd-agent/datadog.conf \
  && sed -i -e"s/^.*log_to_syslog:.*$/log_to_syslog: no/" /etc/dd-agent/datadog.conf \
  && mv /supervisor.conf /etc/dd-agent/supervisor.conf
 
-# Expose supervisor and DogStatsD port
-EXPOSE 9001/tcp 8125/udp
+# Expose supervisor, DogStatsD and trace-agent port
+EXPOSE 9001/tcp 8125/udp 8126/tcp
 
 # Set proper permissions to allow running as a non-root user
 RUN chmod g+w /etc/dd-agent/datadog.conf \

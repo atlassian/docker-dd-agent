@@ -13,6 +13,7 @@ docker run -d --name dd-agent \
   -v /proc/:/host/proc/:ro \
   -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
   -e API_KEY={your_api_key_here} \
+  -e SD_BACKEND=docker \
   datadog/docker-dd-agent
 ```
 
@@ -24,6 +25,7 @@ docker run -d --name dd-agent \
   -v /proc/:/host/proc/:ro \
   -v /cgroup/:/host/sys/fs/cgroup:ro \
   -e API_KEY={your_api_key_here} \
+  -e SD_BACKEND=docker \
   datadog/docker-dd-agent
 ```
 
@@ -34,6 +36,21 @@ docker run -d --name dd-agent \
 ### Hostname
 
 By default the agent container will use the `Name` field found in the `docker info` command from the host as a hostname. To change this behavior you can update the `hostname` field in `/etc/dd-agent/datadog.conf`. The easiest way for this is to use the `DD_HOSTNAME` environment variable (see below).
+
+
+### CGroups
+
+For the Docker check to succeed, memory management by cgroup must be enabled on the host as explained in the [debian wiki](https://wiki.debian.org/LXC#Preparing_the_host_system_for_running_LXC).
+On Debian Jessie or later for example you will need to add `cgroup_enable=memory swapaccount=1` to your boot options, otherwise the agent won't be able to recognize your system. See [this thread](https://askubuntu.com/questions/19486/how-do-i-add-a-kernel-boot-parameter/19487#19487) for details.
+
+
+### Service discovery
+
+The commands we suggest in _Quick Start_ start service discovery in auto config mode. It means the agent will try and detect containers running [some images](https://github.com/DataDog/dd-agent/tree/5.11.2/conf.d/auto_conf) for which we provide a default check that works most of the time.
+
+If you want to disable it, simply remove the `SD_BACKEND` environment variable.
+
+If you want to learn more about it and how to configure it, head to the [service discovery guide](https://docs.datadoghq.com/guides/servicediscovery/).
 
 
 ### Environment variables
@@ -48,10 +65,14 @@ Some configuration parameters can be changed with environment variables:
 * `DD_URL` set the Datadog intake server to send Agent data to (used when [using an agent as a proxy](https://github.com/DataDog/dd-agent/wiki/Proxy-Configuration#using-the-agent-as-a-proxy) )
 * `NON_LOCAL_TRAFFIC` tells the image to set the `non_local_traffic: true` option, which enables statsd reporting from any external ip. You may find this useful to report metrics from your other containers. See [network configuration](https://github.com/DataDog/dd-agent/wiki/Network-Traffic-and-Proxy-Configuration) for more details.
 * ~~`DOGSTATSD_ONLY` tell the image to only start a standalone dogstatsd instance.~~ **[deprecated]: please use [the dogstatsd-only image](#standalone-dogstatsd)**
-* `SD_BACKEND`, `SD_CONFIG_BACKEND`, `SD_BACKEND_HOST`, `SD_BACKEND_PORT` and `SD_TEMPLATE_DIR` configure service discovery.
-`SD_BACKEND` can only be set to `docker` for now, since service discovery works only with docker containers.
-`SD_CONFIG_BACKEND` can be set to `etcd` or `consul` which are the two configuration stores we support right now.
-`SD_BACKEND_HOST` and `SD_BACKEND_PORT` are used to configure the connection to the configuration store, and `SD_TEMPLATE_DIR` to specify the path where the check configuration templates are stored.
+* `SD_BACKEND`, `SD_CONFIG_BACKEND`, `SD_BACKEND_HOST`, `SD_BACKEND_PORT`, `SD_TEMPLATE_DIR` and `SD_CONSUL_TOKEN` configure service discovery:
+
+   - `SD_BACKEND` can only be set to `docker` for now, since service discovery works only with docker containers.
+   - `SD_CONFIG_BACKEND` can be set to `etcd` or `consul` which are the two configuration stores we support at the moment.
+   - `SD_BACKEND_HOST` and `SD_BACKEND_PORT` are used to configure the connection to the configuration store, and `SD_TEMPLATE_DIR` to specify the path where the check configuration templates are stored.
+   - `SD_CONSUL_TOKEN` is used to provide an authentication token for the agent to connect to Consul if required.
+   - `SD_JMX_ENABLE` can be set to `yes` to enble JMX service discovery
+* `DD_APM_ENABLED` run the trace-agent along with the infrastructure agent, allowing the container to accept traces on 8126/tcp (**This option is NOT available on Alpine Images**)
 
 **Note:** it is possible to use `DD_TAGS` instead of `TAGS`, `DD_LOG_LEVEL` instead of `LOG_LEVEL` and `DD_API_KEY` instead of `API_KEY`, these variables have the same impact.
 
@@ -62,13 +83,14 @@ Some configuration parameters can be changed with environment variables:
 
 It is possible to enable some checks through the environment:
 
-* `KUBERNETES` enables the kubernetes check if set (`KUBERNETES=yes` works)
+* `KUBERNETES` enables the kubernetes check if set (`KUBERNETES=yes` works). `KUBERNETES_COLLECT_EVENTS` enables event collection from the kubernetes API, given that `KUBERNETES` is also set. **Note:** only one agent should have `KUBERNETES_COLLECT_EVENTS` set per cluster.
+* the kubelet API endpoint is assumed to be the default route of the container, you can override the kubelet API endpoint by specifying `KUBERNETES_KUBELET_HOST` (eg. when using CNI networking, the kubelet API may not listen on the default route address)
 * `MESOS_MASTER` and `MESOS_SLAVE` respectively enable the mesos master and mesos slave checks if set (`MESOS_MASTER=yes` works).
 * `MARATHON_URL` if set will be used to enable the Marathon check that will query the URL passed in this variable for metrics. It can usually be set to `http://leader.mesos:8080`.
 
 #### Service discovery
 
-Another way to enable checks is through service discovery. This is particularly useful in dynamic environments like Kubernetes, Amazon ECS or Docker Swarm. More details about this feature can be found [in the doc](http://docs.datadoghq.com/guides/servicediscovery/).
+Another way to enable checks is through service discovery. This is particularly useful in dynamic environments like Kubernetes, Amazon ECS or Docker Swarm. More details about this feature can be found [in the doc](https://docs.datadoghq.com/guides/servicediscovery/).
 
 #### Configuration files
 
@@ -108,6 +130,7 @@ These separate images have the advantage of running DogStatsD server as a non-ro
 
 **Note**: These images run DogStatsD only. In the agent, tags are collected from the configuration file and from labels by the collector which is not running here. Thus those tags will not be associated with any metrics and events processed by this container.
 
+**Note**: Optionally, the standalone DogStatsD image can also run the the trace-agent process. Pass `-e DD_APM_ENABLED=true` to your `docker run` command to activate the trace-agent and allow your container to receive traces from Datadog's APM integrations.
 
 ### DogStatsD from the host
 
@@ -115,6 +138,9 @@ DogStatsD can be available on port 8125 from anywhere by adding the option `-p 8
 
 To make it available from your host only, use `-p 127.0.0.1:8125:8125/udp` instead.
 
+### Disable dogstatsd
+
+DogStatsd can be disabled by setting `USE_DOGSTATSD` to `no`
 
 ### DogStatsD from other containers
 
@@ -137,6 +163,67 @@ DogStatsD address and port will be available in `my_container`'s environment var
 
 Since the Agent container port 8125 should be linked to the host directly, you can connect to DogStatsD through the host. Usually the IP address of the host in a Docker container can be determined by looking at the address of the default route of this container with `ip route` for example. You can then configure your DogStatsD client to connect to `172.17.42.1:8125` for example.
 
+
+## Tracing + APM
+
+Enable the [datadog-trace-agent](https://github.com/DataDog/datadog-trace-agent) in the `docker-dd-agent` container by passing
+`DD_APM_ENABLED=true` as an environment variable
+
+**Note: APM is NOT available on Alpine Images**
+
+### Tracing from the host
+
+Tracing can be available on port 8126/tcp from anywhere by adding the options `-p 8126:8126/tcp` to the `docker run` command
+
+To make it available from your host only, use `-p 127.0.0.1:8126:8126/tcp` instead.
+
+For example, the following command will allow the agent to receive traces from anywhere
+
+```
+docker run -d --name dd-agent \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /proc/:/host/proc/:ro \
+  -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+  -e API_KEY={your_api_key_here} \
+  -e DD_APM_ENABLED=true \
+  -p 8126:8126/tcp \
+  datadog/docker-dd-agent
+```
+
+Previous instructions required binding to port 7777.
+This is a legacy port used by former client libraries and has been replaced by 8126.
+
+### Tracing from other containers
+As with DogStatsD, traces can be submitted to the agent from other containers either
+using the Docker host IP or with Docker links
+
+#### Using Docker links
+```
+docker run  --name my_container           \
+            --all_your_flags              \
+            --link dd-agent:dd-agent    \
+            my_image
+```
+will expose `DD_AGENT_PORT_8126_TCP_ADDR` and `DD_AGENT_PORT_8126_TCP_PORT` as environment variables. Your application tracer can be configured to submit to this address.
+
+An example in Python:
+```
+import os
+from ddtrace import tracer
+tracer.configure(
+    hostname=os.environ["DD_AGENT_PORT_8126_TCP_ADDR"],
+    port=os.environ["DD_AGENT_PORT_8126_TCP_PORT"]
+)
+```
+
+#### Using Docker host IP
+
+Agent container port 8126 should be linked to the host directly, Having determined the address of the default route of this container, with `ip route` for example, you can configure your application tracer to report to it.
+
+An example in python, assuming `172.17.0.1` is the default route:
+```
+from ddtrace import tracer; tracer.configure(hostname="172.17.0.1", port=8126)
+```
 
 ## Build an image
 
@@ -173,7 +260,7 @@ You can find [some examples](https://github.com/DataDog/docker-dd-agent/tree/mas
 ## Alpine-based image
 
 Starting from Agent 5.7 we also provide an image based on [Alpine Linux](https://alpinelinux.org/). This image is smaller (about 60% the size of the Debian based one), and benefits from Alpine's security-oriented design.
-It is compatible with all options described in this file (service discovery, enabling specific integrations, etc.).
+It is compatible with all options described in this file (service discovery, enabling specific integrations, etc.) with the exception of Tracing and APM (the trace-agent does not ship with the Alpine images).
 
 This image is available under tags with the following naming convention `usual_tag_name-alpine`. So for example to use the latest tag: `datadog/docker-dd-agent:latest-alpine` must be pulled. To use a specific version number, specify `11.2.583-alpine`.
 
@@ -273,4 +360,4 @@ Also, several integrations might be incomplete. See the "Contribute" section.
 
 ## Contribute
 
-If you notice a limitation or a bug with this container, feel free to open a [Github issue](https://github.com/DataDog/docker-dd-agent/issues). If it concerns the Agent itself, please refer to its [documentation](http://docs.datadoghq.com/) or its [wiki](https://github.com/DataDog/dd-agent/wiki).
+If you notice a limitation or a bug with this container, feel free to open a [Github issue](https://github.com/DataDog/docker-dd-agent/issues). If it concerns the Agent itself, please refer to its [documentation](https://docs.datadoghq.com/) or its [wiki](https://github.com/DataDog/dd-agent/wiki).
