@@ -39,6 +39,6 @@ download_if_not_cached unicreds.tgz https://github.com/Versent/unicreds/releases
 tar --no-same-owner -zxvf output/unicreds.tgz
 chmod +x unicreds
 
-docker build --tag docker.atlassian.io/buildeng/dd-agent:http_checks .
+docker build --tag docker.atlassian.io/buildeng/dd-agent-http-checks .
 cleanup
 
