@@ -1,4 +1,4 @@
 #!/bin/bash
 
-gunzip image.tar.gz | docker load
+docker load -i image.tar
 docker push docker.atlassian.io/buildeng/dd-agent-http-checks

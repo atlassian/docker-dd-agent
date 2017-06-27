@@ -6,7 +6,7 @@ plan(key:'HTTPCHEC',name:'http-checks',description:'HTTP checks for Bamboo Serve
    }
    stage(name:'Default Stage') {
       job(key:'JOB1',name:'Default Job') {
-         artifactDefinition(name:'image',pattern:'image.tar.gz',shared:'true')
+         artifactDefinition(name:'image',pattern:'image.tar',shared:'true')
          miscellaneousConfiguration() {
             pbc(enabled:'true',image:'docker.atlassian.io/buildeng/agent-baseagent',
                size:'small') {
