@@ -35,6 +35,9 @@ deployment(name:'http-checks deployment',planKey:'OTHERS-HTTPCHEC',
    versioning(version:'release-2',autoIncrementNumber:'true')
    environment(name:'Docker registry') {
       task(type:'cleanWorkingDirectory')
+      task(type:'checkout') {
+         repository(name:'http-checks')
+      }
       task(type:'artifactDownload',description:'Download release contents',
          planKey:'OTHERS-HTTPCHEC') {
          artifact(name:'image',localPath:'.')
@@ -44,11 +47,6 @@ deployment(name:'http-checks deployment',planKey:'OTHERS-HTTPCHEC',
       task(type:'pbc',image:'docker.atlassian.io/buildeng/agent-baseagent',
          size:'small') {
          extraContainer(name:'docker',image:'docker:stable-dind',size:'regular')
-      }
-      permissions() {
-         user(name:'obrent',permissions:'read,write,build')
-         anonymous(permissions:'read')
-         loggedInUser(permissions:'read')
       }
    }
 }
